@@ -1,15 +1,15 @@
 import json
-from openai import OpenAI
+import os
 import time
 from bson import ObjectId
+from openai import OpenAI
 from dotenv import load_dotenv
-import os
 
-# Load API key from .env
-from dotenv import load_dotenv
+# Load .env variables
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
+# Create OpenAI client using the new SDK
 client = OpenAI(api_key=api_key)
 
 CATEGORIES = ["culture_fit", "work_style", "ethics", "comprehensive"]
@@ -29,39 +29,36 @@ If there is no natural reference, do not insert anything.
 
 Return your answer as a JSON with two keys:
 - "category": one of the above four
-- "question": the updated question (with placeholder if naturally needed)
+- "question": the updated question (with placeholder if needed)
 
 Only return valid JSON. No explanation.
 Question: "{q}"
 """
 
-# Load input file
+# Load all interview questions
 with open("interview_questions.json", "r", encoding="utf-8") as f:
     raw_data = json.load(f)
 
 all_questions = [q.strip() for group in raw_data for q in group["questions"]]
 
-# Process all questions
 results = []
 
 for idx, question in enumerate(all_questions):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": get_prompt(question)}],
-            temperature=0
+            model="gpt-4o-mini",  # or gpt-3.5-turbo
+            messages=[
+                {"role": "user", "content": get_prompt(question)}
+            ],
+            temperature=0,
         )
 
-        # Get response as a JSON string
-        reply = response["choices"][0]["message"]["content"].strip()
-
-        # Parse the returned JSON
+        reply = response.choices[0].message.content.strip()
         parsed = json.loads(reply)
 
-        # Validate category
-        category = parsed["category"]
+        category = parsed.get("category", "comprehensive")
         if category not in CATEGORIES:
-            print(f"⚠️ Unknown category '{category}', defaulting to 'comprehensive'")
+            print(f"⚠️ Invalid category returned: {category}")
             category = "comprehensive"
 
         results.append({
@@ -80,4 +77,4 @@ for idx, question in enumerate(all_questions):
 with open("categorized_questions.json", "w", encoding="utf-8") as f:
     json.dump(results, f, indent=2, ensure_ascii=False)
 
-print("\nDone! Saved to categorized_questions.json")
+print("🎯 Done! Saved to categorized_questions.json")
