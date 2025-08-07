@@ -1,5 +1,5 @@
 import json
-import openai
+from openai import OpenAI
 import time
 from bson import ObjectId
 from dotenv import load_dotenv
@@ -8,7 +8,9 @@ import os
 # Load API key from .env
 from dotenv import load_dotenv
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+api_key = os.getenv("OPENAI_API_KEY")
+
+client = OpenAI(api_key=api_key)
 
 CATEGORIES = ["culture_fit", "work_style", "ethics", "comprehensive"]
 
@@ -44,7 +46,7 @@ results = []
 
 for idx, question in enumerate(all_questions):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": get_prompt(question)}],
             temperature=0
@@ -64,12 +66,11 @@ for idx, question in enumerate(all_questions):
 
         results.append({
             "id": str(ObjectId()),
-            "question": parsed["question"],
+            "question": parsed.get("question", question),
             "category": category
         })
 
         print(f"[{idx + 1}/{len(all_questions)}] ✅")
-
         time.sleep(1.1)
 
     except Exception as e:
